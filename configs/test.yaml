@@ -1,0 +1,17 @@
+mode:
+  test: False
+
+model:
+  name: 'vanilla'
+  ode_func: 'rnn'
+  hidden_size : 64
+  optimizer : 'ADAM'
+
+dataset:
+  type: 'spiral'
+  path: '/data02/ghsim/data/lung_xray/index1/npy_file/'
+
+gpus: '3' # str required
+debug: False
+
+exid : 'pretrained_channel64_lungXray_data_50'
