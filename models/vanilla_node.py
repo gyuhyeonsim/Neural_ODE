@@ -76,12 +76,16 @@ class NeuralODE(nn.Module):
             self.func.double()
 
         elif args.model['ode_func'] == 'rnn':
+            input_size = args.model['input_size']
+            hidden_size = args.model['hidden_size']
             self.func = FullGRUODECell_Autonomous(args.model['hidden_size'])
-            self.encoder = self.func.encoder # linear encoder
-            self.decoder = self.func.decoder # linear decoder
+            self.encoder = nn.Linear(input_size, hidden_size) # linear encoder
+            self.decoder = nn.Linear(input_size, hidden_size) # linear decoder
 
     # train
     def forward(self, x0, t):
         if self.args.model['ode_func'] == 'rnn':
+            x0 = self.encoder(x0)
             pred_y = odeint(self.func, x0, t, method='dopri5').permute(1, 0, 2)
+            pred_y = self.decoder(pred_y)
         return pred_y
