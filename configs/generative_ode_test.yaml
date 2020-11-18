@@ -3,8 +3,14 @@ mode:
 
 model:
   name: 'generative'
-  hidden_size : 64
-  optimizer : 'ADAM'
+  optimizer: 'ADAM'
+  in_feature: 1
+  out_feature: 1
+  latent_dim: 3
+  hidden_dim: 512
+  expansion_type: 'fourier'
+  n_harmonics: 50
+  n_eig: 2 # weight + bias
 
 dataset:
   type: 'sine'

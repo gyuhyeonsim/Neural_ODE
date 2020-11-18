@@ -20,6 +20,7 @@ if args.gpus is not None:
 
 dataloader = get_dataloader(args)
 model, optim = get_model(args)
+
 runner = Runner(args, dataloader, model, optim)
 runner.train()
 

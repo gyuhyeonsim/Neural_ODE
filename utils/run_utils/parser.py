@@ -15,7 +15,7 @@ class Parser:
 
         # hyper parameters
         self.parser.add_argument('--num_hidden', type=int, default=64)
-        self.parser.add_argument('--lr', type=float, default=0.001)
+        self.parser.add_argument('--lr', type=float, default=0.0001)
         self.parser.add_argument('--niter', type=int, default=200)
 
     def get_args(self):
