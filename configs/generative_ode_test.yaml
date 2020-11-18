@@ -1,0 +1,17 @@
+mode:
+  test: False
+
+model:
+  name: 'galinear'
+  hidden_size : 64
+  optimizer : 'ADAM'
+
+dataset:
+  type: 'sine'
+  path: './datasets/csv/unit_amp_freq20.csv'
+  batch: 64
+
+gpus: '3' # str required
+debug: False
+
+exid : 'unit_amp_20freq_test'

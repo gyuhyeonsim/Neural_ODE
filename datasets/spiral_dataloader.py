@@ -1,15 +1,12 @@
 """
 I follows the ode demo of ricky; https://github.com/rtqichen/torchdiffeq/blob/master/examples/ode_demo.py
 """
-
 import torch
 import torch.nn as nn
 import numpy as np
 import torch.utils.data as data
 
 from torchdiffeq import odeint
-
-
 
 def get_batch(args, data_size, batch_time, batch_size):
     # data size 50

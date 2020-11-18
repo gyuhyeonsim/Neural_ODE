@@ -2,9 +2,12 @@ from models.vanilla_node import NeuralODE
 import torch
 
 def get_model(args):
-    model = NeuralODE(args)
-    print("model: {}, number of params: {}".format(args.model['name'], count_parameters(model)))
+    if args.model['name'] == 'vanilla':
+        model = NeuralODE(args)
+    elif args.model['name'] == 'galinear':
+        pass
 
+    print("model: {}, number of params: {}".format(args.model['name'], count_parameters(model)))
     return model, get_optimizer(args, model)
 
 def get_optimizer(args, model):

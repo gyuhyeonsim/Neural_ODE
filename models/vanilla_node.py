@@ -23,10 +23,11 @@ class NN(nn.Module):
         # t-invariant
         return self.function(x)
 
-"""
-https://github.com/edebrouwer/gru_ode_bayes
-"""
 class FullGRUODECell_Autonomous(torch.nn.Module):
+    """
+    reference: https://github.com/edebrouwer/gru_ode_bayes
+    """
+
     def __init__(self, hidden_size, bias=True):
         """
         For p(t) modelling input_size should be 2x the x size.
