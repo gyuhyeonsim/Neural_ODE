@@ -1,11 +1,12 @@
 from models.vanilla_node import NeuralODE
+from models.generative_ode import AugmentedGalerkin
 import torch
 
 def get_model(args):
     if args.model['name'] == 'vanilla':
         model = NeuralODE(args)
-    elif args.model['name'] == 'galinear':
-        pass
+    elif args.model['name'] == 'generative':
+        AugmentedGalerkin
 
     print("model: {}, number of params: {}".format(args.model['name'], count_parameters(model)))
     return model, get_optimizer(args, model)

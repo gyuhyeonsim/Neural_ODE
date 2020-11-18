@@ -2,7 +2,7 @@ mode:
   test: False
 
 model:
-  name: 'galinear'
+  name: 'generative'
   hidden_size : 64
   optimizer : 'ADAM'
 
