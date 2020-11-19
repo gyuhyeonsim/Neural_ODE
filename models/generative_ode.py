@@ -38,6 +38,7 @@ class CoeffDecoder(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, coeffs_size)
         self.act2 = nn.Tanh()
         self.fc3 = nn.Linear(coeffs_size, coeffs_size)
+        print('decoder output size: {}'.format(coeffs_size))
 
     def forward(self, x):
         # input latent vector
@@ -47,7 +48,7 @@ class CoeffDecoder(nn.Module):
 
 class WeightAdaptiveGallinear(nn.Module):
     def __init__(self, hidden_dim, in_features = 1, out_features = 16,
-                 latent_dimension = 3, expfunc = fourier_expansion, n_harmonics = 5, n_eig = 2, dilation = True, shift = True):
+                 latent_dimension = 3, expfunc = fourier_expansion, n_harmonics = 5, n_eig = 2, dilation = False, shift = False):
         super().__init__()
 
         self.in_features, self.out_features, self.latent_dimension = in_features, out_features, latent_dimension
@@ -63,7 +64,7 @@ class WeightAdaptiveGallinear(nn.Module):
         self.depth_cat = DepthCat(1)
 
     def assign_weights(self, s, coeffs):
-        n_range = torch.linspace(0, self.n_harmonics, self.n_harmonics).to(self.input.device)
+        n_range = torch.linspace(0, self.n_harmonics, steps=self.n_harmonics).to(self.input.device)
         basis = self.expfunc(n_range, s * self.dilation.to(self.input.device) + self.shift.to(self.input.device))
         B = []
         for i in range(self.n_eig):
