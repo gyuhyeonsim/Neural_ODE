@@ -36,19 +36,19 @@ class CoeffDecoder(nn.Module):
         self.fc1 = nn.Linear(latent_dimension, hidden_dim)
         self.act1 = nn.Tanh()
         self.fc2 = nn.Linear(hidden_dim, coeffs_size)
-        self.act2 = nn.Tanh()
-        self.fc3 = nn.Linear(coeffs_size, coeffs_size)
+        # self.act2 = nn.Tanh()
+        # self.fc3 = nn.Linear(coeffs_size, coeffs_size)
         print('decoder output size: {}'.format(coeffs_size))
 
     def forward(self, x):
         # input latent vector
         out = self.act1(self.fc1(x))
-        out = self.act2(self.fc2(out))
-        return self.fc3(out)
+        # out = self.act2(self.fc2(out))
+        return self.fc2(out)
 
 class WeightAdaptiveGallinear(nn.Module):
     def __init__(self, hidden_dim, in_features = 1, out_features = 16,
-                 latent_dimension = 3, expfunc = fourier_expansion, n_harmonics = 5, n_eig = 2, dilation = False, shift = False):
+                 latent_dimension = 3, expfunc = fourier_expansion, n_harmonics = 5, n_eig = 2, dilation = False, shift = True):
         super().__init__()
 
         self.in_features, self.out_features, self.latent_dimension = in_features, out_features, latent_dimension

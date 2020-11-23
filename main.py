@@ -3,8 +3,7 @@ import torch.nn as nn
 import yaml
 import os
 
-from utils import Parser, get_dataloader, get_model
-from runners.base_runner import Runner
+from utils import Parser, get_dataloader, get_model, get_runner
 
 args = Parser().get_args()
 if args.config is not None:
@@ -21,7 +20,8 @@ if args.gpus is not None:
 dataloader = get_dataloader(args)
 model, optim = get_model(args)
 
-runner = Runner(args, dataloader, model, optim)
+
+runner = get_runner(args, dataloader, model, optim)
 runner.train()
 
 print('success flag')

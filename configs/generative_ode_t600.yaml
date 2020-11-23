@@ -7,19 +7,19 @@ model:
   in_feature: 1
   out_feature: 1
   latent_dim: 3
-  hidden_dim: 128
+  hidden_dim: 256
   expansion_type: 'fourier'
-  n_harmonics: 12
+  n_harmonics: 30
   n_eig: 2 # weight + bias
 
 dataset:
   type: 'sine'
   path: './datasets/csv/unit_amp_freq10_nosign.csv'
   batch: 64
-  interpolation: 300
-  extrapolation: 300
+  interpolation: 100
+  extrapolation: 0
 
 gpus: '1' # str required
 debug: False
 
-exid : 'unit_amp_10freq_test_2layer'
+exid : 'shifted_galinear_test5_256_100_30'

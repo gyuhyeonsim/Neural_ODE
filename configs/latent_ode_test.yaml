@@ -1,0 +1,22 @@
+mode:
+  test: False
+
+model:
+  name: 'latentode'
+  optimizer: 'ADAM'
+  latent_dim : 4 # paper settings
+  nhidden : 20  # decoder
+  rnn_nhidden : 25  # recog
+  obs_dim : 1
+
+dataset:
+  type: 'sine'
+  path: './datasets/csv/unit_amp_freq10_nosign.csv'
+  batch: 64
+  interpolation: 100
+  extrapolation: 300
+
+gpus: '1' # str required
+debug: False
+
+exid : 'latent_ode_test'

@@ -7,20 +7,11 @@ import random
 from torch.utils.tensorboard import SummaryWriter
 from utils.run_utils.tensorboard_utils import *
 
-class Runner():
-    def __init__(self, args, data_loader, model, optimizer):
-        self.args = args
-        self.dl = data_loader
-        self.torch_device = torch.device("cuda")
-        self.model = model.to(self.torch_device)
-        self.optimizer = optimizer
-        self.seed = random.randint(0, 10000)
-        self.writer = SummaryWriter("./runs/{}".format(self.args.exid))
-        self.metric = dict()
+from runners.base_runner import Runner
 
-        # for debug
-        self.debug = args.debug  # True if debug mode
-        self.cal_loss = nn.MSELoss()
+class LatentRunner(Runner):
+    def __init__(self, args, dataloader, model, optim):
+        super(LatentRunner, self).__init__(args, dataloader, model, optim)
 
     def train(self):
         # train
@@ -32,15 +23,11 @@ class Runner():
                 self.optimizer.zero_grad()
                 t = b['t'][0].to(self.torch_device).float()[:self.args.dataset['interpolation']]  # all data entries share the same time point
                 point = b['point'].to(self.torch_device).float()[:,:self.args.dataset['interpolation']]
-                freq = b['freq'].unsqueeze(1).float()
-                amp = b['amp'].unsqueeze(1).float()
-                sign = b['sign'].unsqueeze(1).float()
-                latent_v = torch.cat([freq, amp, sign], dim=1).to(self.torch_device)
-                #print(t.size(), point.size(), freq.size(), amp.size())
-                # >> torch.Size([64, 100]) torch.Size([64, 100, 1]) torch.Size([64]) torch.Size([64])
-                # print(torch.cat([freq, amp, sign], dim=1).size())
-                # >> torch.Size([64, 3])
-                pred = self.model(t, point[:,0,:], latent_v=latent_v).permute(1,0,2)
+                # freq = b['freq'].unsqueeze(1).float()
+                # amp = b['amp'].unsqueeze(1).float()
+                # sign = b['sign'].unsqueeze(1).float()
+                # latent_v = torch.cat([freq, amp, sign], dim=1).to(self.torch_device)
+                pred = self.model(point, t)
                 loss = self.cal_loss(pred, point)
                 loss.backward()
                 self.optimizer.step()
@@ -90,29 +77,5 @@ class Runner():
 
         return total_interpolation_loss/interpolation_num, total_extrapolation_loss/extrapolation_num
 
-    def model_save(self, epoch, loss):
-        print("saved epoch {}".format(epoch))
-        path = "./save/{}".format(self.args.exid)
-        self.check_direcory('./save')
-        self.check_direcory(path)
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'loss': loss,
-        },path+"/best_model_"+str(self.seed))
-
-    def check_direcory(self, directory):
-        if not os.path.isdir(directory):
-            os.mkdir(directory)  # {}".format(args.exp_idx)
-
-    def get_loss_mask(self, t):
-        zero_v = torch.zeros_like(t)
-        one_v = torch.ones_like(t)
-        interpolation_mask = torch.cat([one_v[:self.args.dataset['interpolation']],zero_v[self.args.dataset['interpolation']:]],dim=0)
-        extrapolation_mask = torch.cat([zero_v[:self.args.dataset['interpolation']],one_v[self.args.dataset['interpolation']:]],dim=0)
-        return interpolation_mask, extrapolation_mask
-
-
-    def record_loss(self, loss, epoch):
+    def cal_loss(self, pred, gt):
         pass

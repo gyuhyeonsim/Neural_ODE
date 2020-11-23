@@ -1,15 +1,22 @@
 from models.vanilla_node import NeuralODE
 from models.generative_ode import GalerkinDE
+from models.latent_ode import LatentODE
+
 import torch
 
 def get_model(args):
     if args.model['name'] == 'vanilla':
         model = NeuralODE(args)
+        optim = get_optimizer(args, model)
     elif args.model['name'] == 'generative':
         model = GalerkinDE(args)
+        optim = get_optimizer(args, model)
+    elif args.model['name'] =='latentode':
+        model = LatentODE(args)
+        optim = model.optimizer
 
     print("model: {}, number of params: {}".format(args.model['name'], count_parameters(model)))
-    return model, get_optimizer(args, model)
+    return model, optim
 
 def get_optimizer(args, model):
     if args.model['optimizer']=='ADAM':
