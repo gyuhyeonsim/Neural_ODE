@@ -16,7 +16,7 @@ dataset:
   interpolation: 100
   extrapolation: 300
 
-gpus: '1' # str required
+gpus: '0' # str required
 debug: False
 
-exid : 'latent_ode_test'
+exid : 'latent_ode_test2_latent4'

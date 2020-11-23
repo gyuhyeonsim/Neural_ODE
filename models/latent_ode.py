@@ -3,6 +3,7 @@ The reference is https://github.com/rtqichen/torchdiffeq
 """
 import torch
 import torch.nn as nn
+import numpy as np
 from torchdiffeq import odeint
 
 
@@ -41,8 +42,8 @@ class RecognitionRNN(nn.Module):
         out = self.h2o(h)
         return out, h
 
-    def initHidden(self):
-        return torch.zeros(self.nbatch, self.nhidden)
+    def initHidden(self,batch_size):
+        return torch.zeros(batch_size, self.nhidden)
 
 
 class Decoder(nn.Module):
@@ -76,8 +77,9 @@ class LatentODE(nn.Module):
         self.optimizer = torch.optim.Adam(params, lr=args.lr)
 
     def forward(self, x, t):
-        h = self.rec.initHidden().to(self.args.device)
-        for t_ in reversed(range(self.args.dataset['interpolation'])):
+        h = self.rec.initHidden(x.size(0)).to(self.args.device)
+
+        for t_ in reversed(range(self.args.dataset['interpolation']//2)):
             obs = x[:, t_, :]
             out, h = self.rec.forward(obs, h)
         qz0_mean, qz0_logvar = out[:, :self.latent_dim], out[:, self.latent_dim:]
@@ -87,7 +89,46 @@ class LatentODE(nn.Module):
         # forward in time and solve ode for reconstructions
         pred_z = odeint(self.func, z0, t).permute(1, 0, 2)
         pred_x = self.dec(pred_z)
+
+        # compute loss
+        noise_std_ = torch.zeros(pred_x.size()).to(self.args.device) + .3
+        noise_logvar = 2. * torch.log(noise_std_).to(self.args.device)
+        logpx = self.log_normal_pdf(
+            x, pred_x, noise_logvar).sum(-1).sum(-1)
+        pz0_mean = pz0_logvar = torch.zeros(z0.size()).to(self.args.device)
+        analytic_kl = self.normal_kl(qz0_mean, qz0_logvar,
+                                pz0_mean, pz0_logvar).sum(-1)
+        loss = torch.mean(-logpx + analytic_kl, dim=0)
+
+        return pred_x, loss
+
+    def infer(self, x, t):
+        h = self.rec.initHidden(x.size(0)).to(self.args.device)
+
+        for t_ in reversed(range(self.args.dataset['interpolation'] // 2)):
+            obs = x[:, t_, :]
+            out, h = self.rec.forward(obs, h)
+
+        qz0_mean, qz0_logvar = out[:, :self.latent_dim], out[:, self.latent_dim:]
+        epsilon = torch.randn(qz0_mean.size()).to(self.args.device)
+        z0 = epsilon * torch.exp(.5 * qz0_logvar) + qz0_mean
+
+        # forward in time and solve ode for reconstructions
+        pred_z = odeint(self.func, z0, t).permute(1, 0, 2)
+        pred_x = self.dec(pred_z)
         return pred_x
 
-    def infer(self):
-        pass
+    def log_normal_pdf(self, x, mean, logvar):
+        const = torch.from_numpy(np.array([2. * np.pi])).float().to(x.device)
+        const = torch.log(const)
+        return -.5 * (const + logvar + (x - mean) ** 2. / torch.exp(logvar))
+
+
+    def normal_kl(self, mu1, lv1, mu2, lv2):
+        v1 = torch.exp(lv1)
+        v2 = torch.exp(lv2)
+        lstd1 = lv1 / 2.
+        lstd2 = lv2 / 2.
+
+        kl = lstd2 - lstd1 + ((v1 + (mu1 - mu2) ** 2.) / (2. * v2)) - .5
+        return kl
