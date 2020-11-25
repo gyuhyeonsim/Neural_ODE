@@ -1,0 +1,18 @@
+mode:
+  test: False
+
+model:
+  name: 'fourier_series'
+  n: 3
+  # it is naive method
+
+dataset:
+  type: 'sine'
+  path: './datasets/csv/unit_amp_freq10_nosign.csv'
+  batch: 1
+  interpolation: 100
+  extrapolation: 300
+
+debug: False
+exid : 'fourier_series'
+gpus: None

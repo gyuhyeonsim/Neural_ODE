@@ -28,7 +28,7 @@ class Runner():
         best_mse = float('inf')
         self.model.train()
         for i in range(self.args.niter):
-            for j, b in enumerate(self.dl['train']):
+            for j, b in enumerate(self.dl['valid']):
                 self.optimizer.zero_grad()
                 t = b['t'][0].to(self.torch_device).float()[:self.args.dataset['interpolation']]  # all data entries share the same time point
                 point = b['point'].to(self.torch_device).float()[:,:self.args.dataset['interpolation']]
@@ -112,7 +112,6 @@ class Runner():
         interpolation_mask = torch.cat([one_v[:self.args.dataset['interpolation']],zero_v[self.args.dataset['interpolation']:]],dim=0)
         extrapolation_mask = torch.cat([zero_v[:self.args.dataset['interpolation']],one_v[self.args.dataset['interpolation']:]],dim=0)
         return interpolation_mask, extrapolation_mask
-
 
     def record_loss(self, loss, epoch):
         pass

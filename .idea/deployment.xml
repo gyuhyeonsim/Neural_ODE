@@ -121,6 +121,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="user@143.248.249.11:60000 (5)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/user/davian/temp_gh/fourier_ode" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="user@143.248.249.11:60000 password">
         <serverdata>
           <mappings>

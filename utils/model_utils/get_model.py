@@ -1,10 +1,13 @@
 from models.vanilla_node import NeuralODE
 from models.generative_ode import GalerkinDE
 from models.latent_ode import LatentODE
-
+from models.fourier_series import FourierSeries
 import torch
 
 def get_model(args):
+    if args.model['name']=='fourier_series':
+        model = FourierSeries(args)
+        return model, 'dummy'
     if args.model['name'] == 'vanilla':
         model = NeuralODE(args)
         optim = get_optimizer(args, model)

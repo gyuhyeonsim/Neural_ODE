@@ -7,4 +7,8 @@ def get_runner(args, dataloader, model, optim):
         from runners.latent_runner import LatentRunner
         runner = LatentRunner(args, dataloader, model, optim)
 
+    elif args.model['name'] =='fourier_series':
+        from runners.no_optim_runner import NoOptimRunner
+        runner = NoOptimRunner(args, dataloader, model, optim)
+
     return runner
