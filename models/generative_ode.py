@@ -47,7 +47,7 @@ class CoeffDecoder(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, coeffs_size)
         self.act2 = nn.Tanh()
         self.fc3 = nn.Linear(coeffs_size, coeffs_size)
-        print('decoder output size: {}'.format(coeffs_size))
+        print('coeffs size: {}'.format(coeffs_size))
 
     def forward(self, x):
         # input latent vector
@@ -115,16 +115,16 @@ class WeightAdaptiveGallinear(nn.Module):
         self.expfunc = expfunc
         self.n_harmonics, self.n_eig = n_harmonics, n_eig
 
-        coeffs_size = ((in_features + 1) * out_features + 2)* n_harmonics * n_eig   # +1 more dilation and shift
+        coeffs_size = ((in_features + 1) * out_features + 1)* n_harmonics * n_eig   # +1 more dilation and shift
 
         # latent_dimension 3 means amp, sign, phase
         self.coeffs_generator = CoeffDecoder(latent_dimension, hidden_dim, coeffs_size)
 
-    def assign_weights(self, s, coeffs, dilation, shift):
+    def assign_weights(self, s, coeffs, dilation):
         n_range = torch.Tensor([0., 1., 2.]).to(self.input.device)
         # n_range = torch.linspace(0, self.n_harmonics, steps=self.n_harmonics).to(self.input.device)
         s = s.new_full((self.batch_size, self.n_eig * self.n_harmonics), s)
-        s = (s * dilation) + shift
+        s = s * dilation
 
         B = self.expfunc(n_range, s)   ## shape of (batch_size, n_eig * n_harmonics, n_harmonics)
         # B = []
@@ -144,12 +144,12 @@ class WeightAdaptiveGallinear(nn.Module):
         self.input = torch.unsqueeze(x[:, :self.in_features], dim=-1)   # shape of (batch_size x in_feature x 1)
         latent_variables = x[:,-self.latent_dimension:]  # shape of (batch_size x latent_dim)
 
-        coeffs = self.coeffs_generator(latent_variables).reshape(self.batch_size, ((self.in_features + 1) * self.out_features + 2)* self.n_eig * self.n_harmonics)
+        coeffs = self.coeffs_generator(latent_variables).reshape(self.batch_size, ((self.in_features + 1) * self.out_features + 1)* self.n_eig * self.n_harmonics)
         self.coeff = coeffs[:, :((self.in_features + 1) * self.out_features * self.n_eig * self.n_harmonics)].reshape(self.batch_size, (self.in_features + 1) * self.out_features, self.n_eig * self.n_harmonics)
         self.dilation = coeffs[:, ((self.in_features + 1) * self.out_features * self.n_eig * self.n_harmonics): (((self.in_features + 1) * self.out_features + 1)* self.n_eig * self.n_harmonics)]
-        self.shift = coeffs[:, (((self.in_features + 1) * self.out_features + 1)* self.n_eig * self.n_harmonics):]
+        #self.shift = coeffs[:, (((self.in_features + 1) * self.out_features + 1)* self.n_eig * self.n_harmonics):]
 
-        w = self.assign_weights(s, self.coeff, self.dilation, self.shift)
+        w = self.assign_weights(s, self.coeff, self.dilation)
         self.weight = w[:, :(self.in_features * self.out_features)].reshape(self.batch_size, self.in_features, self.out_features)
         self.bias = w[:, (self.in_features * self.out_features):((self.in_features + 1) * self.out_features)].reshape(self.batch_size, self.out_features)
 
@@ -161,7 +161,7 @@ class AugmentedGalerkin(nn.Module):
         super().__init__()
         self.depth_cat = DepthCat(1)
         if expfunc=='fourier':
-            expfunc = fourier_expansion
+            expfunc = batch_fourier_expansion
         self.gallinear = WeightAdaptiveGallinear(hidden_dim=hidden_dim, in_features=in_features, out_features=out_features, latent_dimension=latent_dim,
                                                   expfunc=expfunc, n_harmonics=n_harmonics, n_eig=n_eig)
         self.z = None
@@ -189,7 +189,19 @@ class GalerkinDE(nn.Module):
         self.galerkine_ode = NeuralDE(self.func, solver='dopri5', order=2).to(args.device)
 
     def forward(self, t, x, latent_v):
+        y0 = x[:, 0]
+        t = torch.squeeze(t[0])
         z = latent_v
         self.func.z = z
-        pred = self.galerkine_ode.trajectory(x, t)
-        return pred
+
+        decoded_traj = self.galerkine_ode.trajectory(y0, t).transpose(0, 1)
+        loss = nn.MSELoss()(decoded_traj, x)
+        return loss
+
+    def predict(self, t, x, latent_v):
+        y0 = x[:, 0]
+        t = t[0]
+        z = latent_v
+        self.func.z = z
+        decoded_traj = self.galerkine_ode.trajectory(y0, t).transpose(0, 1)
+        return decoded_traj

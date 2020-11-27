@@ -19,8 +19,8 @@ class Runner():
         self.metric = dict()
 
         # for debug
-        self.debug = args.debug  # True if debug mode
-        self.cal_loss = nn.MSELoss()
+        # self.debug = args.debug  # True if debug mode
+        # self.cal_loss = nn.MSELoss()
 
     def train(self):
         # train
@@ -29,7 +29,7 @@ class Runner():
         self.model.train()
         for i in range(self.args.niter):
             for j, b in enumerate(self.dl['train']):
-                t = b['t'][0].to(self.torch_device).float()  # all data entries share the same time point
+                #t = b['t'][0].to(self.torch_device).float()  # all data entries share the same time point
                 point = b['point'].to(self.torch_device).float()
                 # freq = b['freq'].unsqueeze(1).float()
                 amp = b['amp'].float()

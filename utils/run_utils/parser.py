@@ -15,6 +15,7 @@ class Parser:
 
         # hyper parameters
         self.parser.add_argument('--num_hidden', type=int, default=64)
+        self.parser.add_argument('--latent_dim', type=int, default=3)
         self.parser.add_argument('--lr', type=float, default=0.0001)
         self.parser.add_argument('--niter', type=int, default=2000)
 
