@@ -6,18 +6,19 @@ model:
   optimizer: 'ADAM'
   in_feature: 1
   out_feature: 1
-  latent_dim: 2
+  latent_dim: 1
   hidden_dim: 128
   expansion_type: 'fourier'
-  n_harmonics: 12
+  n_harmonics: 1
   n_eig: 2 # cos + sin
+  filename: 'dataset1_penalty'
+  dilation_penalty_lambda: 0.0001
+  dilation_penalty: True
 
 dataset:
-  type: 'sine'
+  type: 'dataset1'
   path: './datasets/csv/unit_amp_freq10_nosign.csv'
-  batch: 64
+  batch: 1024
+  output_dir: '/data/private/generativeODE/galerkin_pretest/pretest_4/coeff_dil_diff/'
 
 gpus: '1' # str required
-debug: False
-
-exid : 'unit_amp_10freq_test_2layer'
