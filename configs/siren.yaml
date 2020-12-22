@@ -1,0 +1,23 @@
+mode:
+  test: False
+
+model:
+  name: 'siren'
+  optimizer: 'ADAM'
+  in_feature: 1
+  out_feature: 1
+  latent_dim: 4
+  hidden_dim: 64
+  layer : 1
+
+dataset:
+  type: 'irregular'
+  path: './datasets/csv/1217_sin2x_cosx.csv'
+  batch: 64
+  interpolation: 1000
+  extrapolation: 300
+
+gpus: '0' # str required
+debug: False
+
+exid : 'siren_sin_square'

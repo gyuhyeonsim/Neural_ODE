@@ -11,10 +11,16 @@ class FourierSeries(nn.Module):
         super().__init__()
         self.args = args
         self.n= args.model['n']
+        self.dilation = args.model['dilation']
 
     def forward(self, inter_t, extra_t, ydata):
         x, y = variables('x, y')
-        w, = parameters('w')
+
+        if self.dilation == True:
+            w, = parameters('w')
+        else:
+            w = 1
+
         model_dict = {y: self.fourier_series(x, f=w, n=self.n)}
 
         xdata = inter_t.numpy()

@@ -1,0 +1,24 @@
+mode:
+  test: False
+
+model:
+  name: 'rmsn'
+#  ode_func: 'rnn'
+  phase: 1
+  cs_hidden_dim : 64
+  st_hidden_dim : 64
+  intervention_dim : 2
+  observation_dim : 2
+  latent_dim : 16
+  layer : 1
+  optimizer : 'ADAM'
+
+dataset:
+  type: 'synthetic'
+  path: './datasets/csv/synthetic_changed_itv_v_seed.csv'
+  batch: 64
+
+gpus: '3' # str required
+debug: False
+
+exid : 'propensity_test'

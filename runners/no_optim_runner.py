@@ -32,6 +32,9 @@ class NoOptimRunner():
         total_enum = 0
         total_time = 0
 
+        imse_list = []
+        emse_list = []
+
         for j, b in enumerate(self.dl['valid']):
             t = b['t'][0].float()[:self.args.dataset['interpolation']]  # all data entries share the same time point
             point = b['point'].float()[:, :self.args.dataset['interpolation']]
@@ -49,16 +52,17 @@ class NoOptimRunner():
             point = torch.from_numpy(point)
             extra_pred = extra_pred[self.args.dataset['interpolation']:]
 
-            instant_iloss=self.cal_loss(point, pred).item()
+            instant_iloss = self.cal_loss(point, pred).item()
             instant_eloss = self.cal_loss(extra_point, extra_pred).item()
 
-            i_num = torch.ones_like(pred).sum()
-            e_num = torch.ones_like(extra_pred).sum()
-            total_inum+=i_num
-            total_enum+=e_num
+            total_inum+=1
+            total_enum+=1
 
             total_iloss+=instant_iloss
             total_eloss+=instant_eloss
+
+            imse_list.append(instant_iloss)
+            emse_list.append(instant_eloss)
             print('Item: {}/{}, iMSE: {}, eMSE: {}, cumul_iMSE: {}, cumul_eMSE: {}, time: {}'.format(j, len(self.dl['valid']),
                                                                                        instant_iloss, instant_eloss,
                                                                                        total_iloss/total_inum,
@@ -68,14 +72,19 @@ class NoOptimRunner():
                               ('cumul_iMSE', total_iloss/total_inum), ('cumul_eMSE', total_eloss/total_enum)]
             for l_id, loss in recoreded_list:
                 draw_learning_curve(writer=self.writer, id=l_id, loss=loss, iter=j)
-        self.record_result(imse=total_iloss/total_inum, emse=total_eloss/total_enum, avg_time=total_time/len(self.dl['valid']))
 
-    def record_result(self, imse, emse, avg_time):
+        imse_list = np.array(imse_list)
+        emse_list = np.array(emse_list)
+        self.record_result(imse=np.mean(imse_list), istd=np.std(imse_list),
+                           emse=np.mean(emse_list), estd=np.std(emse_list),
+                           avg_time=total_time/len(self.dl['valid']))
+
+    def record_result(self, imse, istd, emse, estd, avg_time):
         path = "./results"
         self.check_direcory(path)
         df_file_name = "./results/{}.csv".format('1125_fourier')  # .format(args.exp_idx)
         date = time.strftime('%c', time.localtime(time.time()))
-        df_res = pd.DataFrame({"model": [self.args.exid], "iMSE": [imse], "eMSE": [emse],"avg_time":[avg_time],"data":[date], "seed":[self.seed]})
+        df_res = pd.DataFrame({"model": [self.args.exid], "iMSE": [imse.item()], "istd":[istd], "eMSE": [emse.item()], "estd":[estd],"avg_time":[avg_time],"data":[date], "seed":[self.seed]})
         if os.path.isfile(df_file_name):
             df = pd.read_csv(df_file_name)
             df = df.append(df_res)

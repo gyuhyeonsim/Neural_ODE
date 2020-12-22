@@ -2,24 +2,27 @@ mode:
   test: False
 
 model:
-  name: 'generative'
+  name: 'irregular'
   optimizer: 'ADAM'
   in_feature: 1
   out_feature: 1
   latent_dim: 4
-  hidden_dim: 32
+  hidden_dim: 64
   expansion_type: 'fourier'
   n_harmonics: 1
   n_eig: 2 # weight + bias
+  har_mode: 1
+  merger: True
+  all_element_wise: True
 
 dataset:
-  type: 'sine'
+  type: 'irregular'
   path: './datasets/csv/1217_sin2x_cosx.csv'
   batch: 64
-  interpolation: 1000
+  interpolation: 250
   extrapolation: 1000
 
 gpus: '3' # str required
 debug: False
 
-exid : 'shifted_galinear_test5_256_100_30'
+exid : 'debug_harmo1_250'
