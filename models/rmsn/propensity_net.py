@@ -15,6 +15,8 @@ class PropensityNet(nn.Module):
 
         st_h_dim = args.model['st_hidden_dim']
         cs_h_dim = args.model['cs_hidden_dim']
+        self.cs_h_dim = cs_h_dim
+        self.st_h_dim = st_h_dim
 
         z_dim = args.model['latent_dim']
         n_layer = args.model['layer']
@@ -23,22 +25,44 @@ class PropensityNet(nn.Module):
         self.st_numer = VRNN(x_dim=A_dim, h_dim=st_h_dim, z_dim=z_dim, n_layers=n_layer)
         self.st_n_optim = get_optimizer(args, self.st_numer)
 
-        self.st_denor = VRNN(x_dim=H_dim, h_dim=st_h_dim, z_dim=z_dim,
+        self.st_denom = VRNN(x_dim=H_dim, h_dim=st_h_dim, z_dim=z_dim,
                              outdim=out_dim, n_layers=n_layer)
-        self.st_d_optim = get_optimizer(args, self.st_denor)
+        self.st_d_optim = get_optimizer(args, self.st_denom)
 
         # probability mass function; Is cencoring false?
-        self.censor_numer = CensorNet(A_dim, cs_h_dim)#nn.GRU(A_dim, cs_h_dim, n_layer)
+        self.censor_numer = CensorNet(A_dim, cs_h_dim) #nn.GRU(A_dim, cs_h_dim, n_layer)
         self.cs_n_optim = get_optimizer(args, self.censor_numer)
 
-        self.censor_denor = CensorNet(H_dim, cs_h_dim)#nn.GRU(H_dim+1, cs_h_dim, n_layer) # time_dependent
-        self.cs_d_optim = get_optimizer(args, self.censor_denor)
+        self.censor_denom = CensorNet(H_dim, cs_h_dim) #nn.GRU(H_dim+1, cs_h_dim, n_layer) # time_dependent
+        self.cs_d_optim = get_optimizer(args, self.censor_denom)
+
+        if args.model['phase']!=1:
+            self.args = args
+            self.model_load()
 
     def forward(self, t, x):
         pass
 
+    def model_load(self):
+        state_dict = torch.load('./save/{}/SW_numer'.format(self.args.exid))['model_state_dict']
+        self.st_numer.load_state_dict(state_dict)
+        print('Succeed in Loading Stabilized Weights Nominator')
+
+        state_dict = torch.load('./save/{}/SW_deno'.format(self.args.exid))['model_state_dict']
+        self.st_denom.load_state_dict(state_dict)
+        print('Succeed in Loading Stabilized Weights Denominator')
+
+        state_dict = torch.load('./save/{}/CS_numer'.format(self.args.exid))['model_state_dict']
+        self.censor_numer.load_state_dict(state_dict)
+        print('Succeed in Loading Censoring Nominator')
+
+        state_dict = torch.load('./save/{}/CS_denom'.format(self.args.exid))['model_state_dict']
+        self.censor_denom.load_state_dict(state_dict)
+        print('Succeed in Loading Censoring Denominator')
+
+
 def get_optimizer(args, model):
     if args.model['optimizer']=='ADAM':
-        print('optimizer: {}'.format(args.model['optimizer']))
+        # print('optimizer: {}'.format(args.model['optimizer']))
         optim = torch.optim.Adam(model.parameters(), args.lr, amsgrad=False)
     return optim

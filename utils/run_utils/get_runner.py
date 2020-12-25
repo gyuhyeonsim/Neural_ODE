@@ -16,7 +16,7 @@ def get_runner(args, dataloader, model, optim=None):
         runner = IrregularRunner(args, dataloader, model, optim)
 
     elif args.model['name'] == 'rmsn':
-        if args.model['phase'] == 1:
-            from runners.propensity_runner import PropensityRunner
-            runner = PropensityRunner(args, dataloader, model)
+        from runners.rmsn_runner import PropensityRunner
+        runner = PropensityRunner(args, dataloader, model)
+
     return runner

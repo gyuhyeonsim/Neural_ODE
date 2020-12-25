@@ -33,7 +33,12 @@ def get_model(args):
             args.torch_device = torch.device("cuda")
             model = PropensityNet(args)
             optim = None
-
+        elif args.model['phase']==2:
+            model = PropensityNet(args)
+            optim = None
+        elif args.model['phase']==3:
+            model = PropensityNet(args)
+            optim = None
 
     print("model: {}, number of params: {}".format(args.model['name'], count_parameters(model)))
     return model, optim

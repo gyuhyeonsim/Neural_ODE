@@ -93,7 +93,12 @@ class VRNN(nn.Module):
         nll_loss = 0
 
         h = Variable(torch.zeros(self.n_layers, x.size(1), self.h_dim))
-        for t in range(x.size(0)-1):
+        if gt is not None:
+            dlen = x.size(0)
+        else:
+            dlen = x.size(0)-1
+
+        for t in range(dlen):
             phi_x_t = self.phi_x(x[t])
 
             # encoder
@@ -180,7 +185,6 @@ class VRNN(nn.Module):
 
     def _kld_gauss(self, mean_1, std_1, mean_2, std_2):
         """Using std to compute KLD"""
-
         kld_element = (2 * torch.log(std_2) - 2 * torch.log(std_1) +
                        (std_1.pow(2) + (mean_1 - mean_2).pow(2)) /
                        std_2.pow(2) - 1)
