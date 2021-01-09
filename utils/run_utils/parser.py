@@ -12,10 +12,11 @@ class Parser:
         self.parser.add_argument('--model', type=str, choices=['2d_unet', '3d_cell'], default='2d_unet')
         self.parser.add_argument('--config', type=str)
         self.parser.add_argument('--test_seed', type=str, default=None)
+        self.parser.add_argument('--cv-idx', type=int, default=1)
 
         # hyper parameters
         self.parser.add_argument('--num_hidden', type=int, default=64)
-        self.parser.add_argument('--lr', type=float, default=0.0001)
+        self.parser.add_argument('--lr', type=float, default=0.001)
         self.parser.add_argument('--niter', type=int, default=200)
 
     def get_args(self):

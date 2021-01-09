@@ -3,10 +3,9 @@ mode:
 
 model:
   name: 'rmsn'
-#  ode_func: 'rnn'
-  phase: 3
-  cs_hidden_dim : 64
-  st_hidden_dim : 64
+  phase: 1
+  cs_hidden_dim : 35
+  st_hidden_dim : 35
   intervention_dim : 2
   observation_dim : 2
   latent_dim : 16
@@ -23,9 +22,8 @@ model:
   decoder_epoch : 1000
 
 dataset:
-  type: 'synthetic'
-  path: './datasets/csv/synthetic_changed_itv_v_seed.csv'
-  batch: 64
+  type: 'eicu'
+  batch: 32
 
   truncate: False
   projection_horizon : 5  # in RMSN settings
@@ -37,4 +35,4 @@ dataset:
 gpus: '3' # str required
 debug: False
 
-exid : '1224_test_3'
+exid : '0110_eicu_test'

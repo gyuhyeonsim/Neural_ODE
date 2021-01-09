@@ -4,8 +4,9 @@ import numpy as np
 from torch.autograd import Variable
 
 class CensorNet(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, args, input_size, hidden_size):
         super().__init__()
+        self.args = args
         # self.encoder = nn.Linear(input_size, hidden_size)
         self.model = nn.GRUCell(input_size, hidden_size)
         self.decoder = nn.Linear(hidden_size, 1)
@@ -16,7 +17,7 @@ class CensorNet(nn.Module):
         self.BCE_loss = nn.BCELoss(reduction='sum')
 
     def forward(self, x, gt=None):
-        h = Variable(torch.zeros(x.size(1), self.h_dim))
+        h = Variable(torch.zeros(x.size(1), self.h_dim)).to(self.args.device)
         # print(h.size(), x.size())
         # >> torch.Size([64, 64]) torch.Size([50, 64, 2])
         nll_loss = 0
@@ -26,6 +27,7 @@ class CensorNet(nn.Module):
             h = self.model(x[t], h) # update hidden
             C = self.decoder(h)
             C = self.act(C)
+
             # nll_loss += self._nll_bernoulli(C, gt[t+1])
             # print(C.size(), gt[t+1].size())
             nll_loss += self.BCE_loss(C, gt[t+1])
@@ -41,6 +43,7 @@ class CensorNet(nn.Module):
             C = self.decoder(h)
             C = self.act(C)
             C_list.append(C)
+
         # nll_loss/=torch.ones_like(gt).sum()
         return 1-torch.stack(C_list)  # C=0
 

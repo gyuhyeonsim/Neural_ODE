@@ -1,0 +1,38 @@
+mode:
+  test: False
+
+model:
+  name: 'rmsn'
+  phase: 1
+  cs_hidden_dim : 35
+  st_hidden_dim : 35
+  intervention_dim : 6
+  observation_dim : 3
+  latent_dim : 16
+  encoder_dim : 64
+  layer : 1
+  optimizer : 'ADAM'
+
+  decoder_hidden_dim : 64
+
+  encoder_lr : 0.0001
+  encoder_epoch : 1000
+
+  decoder_lr : 0.0001
+  decoder_epoch : 1000
+
+dataset:
+  type: 'mimic'
+  batch: 32
+
+  truncate: False
+  projection_horizon : 5  # in RMSN settings
+  trunc_path: './rmsn_decoder_dataset/1224_test_3/'
+  truncated_batch: 128   # corresponding to batch 64
+  truncated_one_series: 47
+
+
+gpus: '3' # str required
+debug: False
+
+exid : '0110_CHIL_mimic_test'

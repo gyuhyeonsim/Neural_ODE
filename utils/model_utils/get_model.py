@@ -27,15 +27,18 @@ def get_model(args):
         """
         model = SirenWrapper(args)
         optim = get_optimizer(args, model)
+
     elif args.model['name']== 'rmsn':
         if args.model['phase']==1:
             # learning propensity network
-            args.torch_device = torch.device("cuda")
+            # args.torch_device = torch.device("cuda")
             model = PropensityNet(args)
             optim = None
+
         elif args.model['phase']==2:
             model = PropensityNet(args)
             optim = None
+
         elif args.model['phase']==3:
             model = PropensityNet(args)
             optim = None
