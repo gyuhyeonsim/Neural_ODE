@@ -3,24 +3,24 @@ mode:
 
 model:
   name: 'rmsn'
-  phase: 1
-  cs_hidden_dim : 35
-  st_hidden_dim : 35
+  phase: 3
+  cs_hidden_dim : 11
+  st_hidden_dim : 11
   intervention_dim : 4
   observation_dim : 2
   latent_dim : 16
-  encoder_dim : 64
   layer : 1
   optimizer : 'ADAM'
 
-  decoder_hidden_dim : 64
-
+  encoder_dim : 44
   encoder_lr : 0.0001
   encoder_epoch : 1000
 
+  decoder_hidden_dim : 44
   decoder_lr : 0.0001
   decoder_epoch : 1000
 
+tuning_test: False
 dataset:
   type: 'collision'
   batch: 32
@@ -34,5 +34,6 @@ dataset:
 
 gpus: '3' # str required
 debug: False
+tte: 0.1 # time to encode
 
 exid : '0110_collision_test2'

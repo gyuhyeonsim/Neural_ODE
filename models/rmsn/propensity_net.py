@@ -40,7 +40,8 @@ class PropensityNet(nn.Module):
 
         if args.model['phase']!=1:
             self.args = args
-            self.model_load()
+            if not self.args.tuning_test:
+                self.model_load()
 
     def forward(self, t, x):
         pass

@@ -3,24 +3,25 @@ mode:
 
 model:
   name: 'rmsn'
-  phase: 1
-  cs_hidden_dim : 35
-  st_hidden_dim : 35
+  phase: 3
+  cs_hidden_dim : 10
+  st_hidden_dim : 10
   intervention_dim : 6
   observation_dim : 3
   latent_dim : 16
-  encoder_dim : 64
+
   layer : 1
   optimizer : 'ADAM'
 
-  decoder_hidden_dim : 64
-
+  encoder_dim : 62
   encoder_lr : 0.0001
   encoder_epoch : 1000
 
+  decoder_hidden_dim : 62
   decoder_lr : 0.0001
   decoder_epoch : 1000
 
+tuning_test: False
 dataset:
   type: 'mimic'
   batch: 32
@@ -34,5 +35,5 @@ dataset:
 
 gpus: '3' # str required
 debug: False
-
-exid : '0110_CHIL_mimic_test'
+tte: 0.1 # time to encode
+exid : '0111_CHIL_mimic'

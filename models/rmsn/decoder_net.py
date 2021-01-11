@@ -4,8 +4,9 @@ import numpy as np
 from torch.autograd import Variable
 
 class DecoderNet(nn.Module):
-    def __init__(self, input_hidden_size, hidden_size, itv_dim, obs_dim):
+    def __init__(self, args, input_hidden_size, hidden_size, itv_dim, obs_dim):
         super().__init__()
+        self.args = args
         self.obs_dim = obs_dim
 
         # ELU non-linear adaptor
@@ -15,7 +16,7 @@ class DecoderNet(nn.Module):
         self.model = nn.GRUCell(itv_dim, hidden_size)
         self.decoder = nn.Linear(hidden_size, obs_dim)
 
-        self.epsilon = 0.001
+        self.epsilon = 0.1
         self.loss = nn.MSELoss(reduction='sum')
         self.n_layers = 1
         self.h_dim = hidden_size
@@ -51,18 +52,20 @@ class DecoderNet(nn.Module):
         return mse_loss
 
     def forward_nontruncated(self, x, itv, encoder, valid=False):
-        x = x.permute(1,0,2)
-        itv = itv.permute(1,0,2)[:,:,:-1]
-        h = Variable(torch.zeros(x.size(1), encoder.h_dim))
-        time_to_encode = x.size(0)//10
+        x = x.permute(1,0,2).to(self.args.device)
+        itv = itv.permute(1,0,2)[:,:,:self.args.model['intervention_dim']].to(self.args.device)
+        time_to_encode = int(x.size(0)*self.args.tte)
 
         # for t in range(time_to_encode):
         with torch.no_grad():
-            H = torch.cat([x[:time_to_encode+1], itv[:time_to_encode+1,:,:]], dim=2)
-            _,_,h = encoder(H, gt=x[:time_to_encode+1], valid=True, jupyter=True)
+            # hidden state in time 0 is defined in the encoder network
+            H = torch.cat([x[:time_to_encode],
+                           itv[:time_to_encode,:,:]],
+                           dim=2)
+            _,_,h = encoder(H, gt=x[1:time_to_encode+1], valid=True, jupyter=True)
             decoder_inital_state = h[h.size(0)-1,:,:]
-
         h = self.memory_adaptor(decoder_inital_state)
+
         pred_list = []
         for t in range(time_to_encode, itv.size(0)-1):
             h = self.model(itv[t], h) # update hidden
@@ -74,9 +77,9 @@ class DecoderNet(nn.Module):
         # calculate propensity_weight
         with torch.no_grad():
             # predict Censoring Weight
-            censor_numerator = encoder.propensity.censor_numer.infer(x)  # update hidden
+            censor_numerator = encoder.propensity.censor_numer.infer(itv)  # update hidden
             censor_denominator = encoder.propensity.censor_denom.infer(torch.cat([x,itv],dim=2))
-            CW = (censor_numerator / (censor_denominator + self.epsilon))  # Censoring Weight
+            CW = (censor_numerator+ self.epsilon / (censor_denominator + self.epsilon))  # Censoring Weight
             # print(CW.size())
             # >> torch.Size([49, 64, 1])
 
@@ -91,30 +94,30 @@ class DecoderNet(nn.Module):
             # >> torch.Size([44, 64, 1])
 
             # predict Stabilzed Weight
-            _, _, _, sw_numerator = encoder.propensity.st_numer(x)
+            _, _, sw_numerator = encoder.propensity.st_numer(itv)
             A_mean = torch.stack(sw_numerator[0])
             A_std = torch.stack(sw_numerator[1])
-            sw_numerator = self.gaussian_dist(x[1:], A_mean, A_std)
-
+            sw_numerator = self.gaussian_dist(itv[1:], A_mean, A_std)
             H = torch.cat([x[1:], itv[:x.size(0) - 1]], dim=2)
             # print(H.size())
             # >> torch.Size([49, 64, 2])
 
-            _, _, _, sw_demoninator = encoder.propensity.st_denom(x=H, gt=x)
+            _, _, sw_demoninator = encoder.propensity.st_denom(x=H, gt=itv)
             A_mean = torch.stack(sw_demoninator[0])
             A_std = torch.stack(sw_demoninator[1])
-            sw_demoninator = self.gaussian_dist(x[1:], A_mean, A_std)
+            sw_demoninator = self.gaussian_dist(itv[1:], A_mean, A_std)
             # print(sw_demoninator.size(), sw_numerator.size())
             # torch.Size([49, 64, 2]) torch.Size([49, 64, 2])
 
             SW = 1
             for i in range(sw_numerator.size(2)):
-                SW *= sw_numerator[:, :, i] / (sw_demoninator[:, :, i] + self.epsilon)
+                SW *= (sw_numerator[:, :, i]+self.epsilon) / (sw_demoninator[:, :, i] + self.epsilon)
             SW = SW.unsqueeze(2)
             SW = SW[time_to_encode-2:-1,:,:] # t=4~ t=48까지 필요하다
 
             for i in range(1, SW.size(0)):
                 SW[i] = SW[i - 1] * SW[i]
+
             proc_CW = SW[1:]
             SW = proc_CW
             SW = SW / ((SW.sum() / (torch.ones_like(pred_list[1:, :, :]).sum())+self.epsilon)+self.epsilon)

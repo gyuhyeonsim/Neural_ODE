@@ -1,5 +1,6 @@
 import os
 import torch
+import pandas as pd
 import torch.nn as nn
 import random
 
@@ -41,6 +42,16 @@ class PropensityRunner():
                 self.decoder = self.get_decoder()
                 self.decoder_optim = torch.optim.Adam(self.decoder.parameters(),
                                                       self.args.model['decoder_lr'], amsgrad=False)
+
+                print(self.args.tuning_test)
+                if self.args.tuning_test:
+                    params_propensity = count_parameters(self.model)
+                    params_encoder = count_parameters(self.encoder)
+                    params_decoder = count_parameters(self.decoder)
+                    print('Total params: {}, propensity: {}, encoder: {}, decoder: {}'.
+                          format(params_propensity + params_decoder + params_encoder, params_propensity,
+                                 params_encoder-params_propensity, params_decoder))
+                    # exit()
                 self.train_non_truncated_decoder()
 
         elif self.args.model['phase'] == 'data_gen':
@@ -51,7 +62,7 @@ class PropensityRunner():
         self.args.niter = 0
         best_mse = float('inf')
         self.model.train()
-        self.args.niter = 0
+        self.args.niter = 300
         total_iter=0
         for i in range(self.args.niter):
             for j, b in enumerate(self.dl['train']):
@@ -68,7 +79,7 @@ class PropensityRunner():
                 self.model.st_n_optim.step()
 
                 print('[Stabilized Weights Nominator] Epoch: {}/{}, Loss: {}'
-                      .format(i, self.args.niter, round(loss.item(),4)))
+                      .format(i, self.args.niter, round(loss.item(),8)))
                 self.draw_learning_curve(self.writer,'train_st_numer',loss.item(),total_iter)
                 total_iter+=1
 
@@ -82,7 +93,7 @@ class PropensityRunner():
             valid_loss /= valid_num
 
             print('[Stabilized Weights Nominator] Epoch: {}/{}, Valid Loss: {}'
-                  .format(i, self.args.niter, round(valid_loss.item(),4)))
+                  .format(i, self.args.niter, round(valid_loss.item(),8)))
             self.draw_learning_curve(self.writer, 'valid_st_numer', valid_loss.item(), i)
 
             if best_mse>valid_loss:
@@ -106,7 +117,7 @@ class PropensityRunner():
                 loss.backward()
                 self.model.st_d_optim.step()
                 print('[Stabilized Weights Denominator] Epoch:{}/{}, Loss: {}'
-                      .format(i, self.args.niter, round(loss.item(),4)))
+                      .format(i, self.args.niter, round(loss.item(),8)))
                 self.draw_learning_curve(self.writer,'train_st_denom',loss.item(),total_iter)
                 total_iter+=1
 
@@ -122,7 +133,7 @@ class PropensityRunner():
             valid_loss/=valid_num
 
             print('[Stabilized Weights Denominator] Epoch: {}/{}, Valid Loss: {}'
-                  .format(i, self.args.niter, round(valid_loss.item(),4)))
+                  .format(i, self.args.niter, round(valid_loss.item(),8)))
             self.draw_learning_curve(self.writer, 'valid_st_denom', valid_loss.item(), i)
 
             if best_mse>valid_loss:
@@ -144,7 +155,7 @@ class PropensityRunner():
                 loss.backward()
                 self.model.cs_n_optim.step()
                 print('[Censoring Nominator] Epoch: {}/{}, Loss: {}'
-                      .format(i, self.args.niter, round(loss.item(),4)))
+                      .format(i, self.args.niter, round(loss.item(),8)))
                 self.draw_learning_curve(self.writer,'train_cens_numer',loss.item(),total_iter)
                 total_iter+=1
 
@@ -159,7 +170,7 @@ class PropensityRunner():
 
             valid_loss/=valid_num
             print('[Censoring Nominator] Epoch: {}/{}, Valid Loss: {}'
-                  .format(i, self.args.niter, round(valid_loss.item(),4)))
+                  .format(i, self.args.niter, round(valid_loss.item(),8)))
             self.draw_learning_curve(self.writer, 'valid_cens_numer', valid_loss.item(),i)
 
             if best_mse>valid_loss:
@@ -182,7 +193,7 @@ class PropensityRunner():
                 loss.backward()
                 self.model.cs_d_optim.step()
                 print('[Censoring Denominator] Epoch: {}/{}, Loss: {}'
-                      .format(i, self.args.niter, round(loss.item(),4)))
+                      .format(i, self.args.niter, round(loss.item(),8)))
                 self.draw_learning_curve(self.writer,'train_cens_denom',loss.item(),total_iter)
                 total_iter+=1
 
@@ -198,7 +209,7 @@ class PropensityRunner():
 
             valid_loss/=valid_num
             print('[Censoring Denominator] Epoch: {}/{}, Valid Loss: {}'
-                  .format(i, self.args.niter, round(valid_loss.item(),4)))
+                  .format(i, self.args.niter, round(valid_loss.item(),8)))
 
             self.draw_learning_curve(self.writer,'valid_cens_denom',valid_loss.item(),i)
 
@@ -226,7 +237,7 @@ class PropensityRunner():
                 loss.backward()
                 self.encoder_optim.step()
                 print('[Encoder] Epoch:{}/{}, Loss: {}'
-                      .format(i, niter, round(loss.item(),4)))
+                      .format(i, niter, round(loss.item(),8)))
                 self.draw_learning_curve(self.writer,'train_encoder',loss.item(),total_iter)
                 total_iter+=1
 
@@ -252,7 +263,7 @@ class PropensityRunner():
     def train_decoder(self):
         best_mse = float('inf')
         self.decoder.train()
-        # self.args.niter = 5
+        self.args.niter = 0
         total_iter = 0
         niter = self.args.model['decoder_epoch']
         for i in range(niter):
@@ -263,6 +274,7 @@ class PropensityRunner():
                 mask = b['mask'].float()
                 init_hidden = b['hidden'].float()
                 weight = b['weight'].float()
+
                 loss = self.decoder(init_hidden, itv[:,:,:-1], mask, weight, x)
                 loss /= mask.sum()
                 loss.backward()
@@ -295,6 +307,36 @@ class PropensityRunner():
                 print('[Encoder] Saved at {}'.format(i))
         print(best_mse)
 
+        state_dict = torch.load('./save/{}/Decoder'.format(self.args.exid))['model_state_dict']
+        self.decoder.load_state_dict(state_dict)
+        print('[Decoder] Decoder is re-uploaded')
+
+        test_loss = 0
+        test_num = 0
+        for j, b in enumerate(self.dl['valid']):
+            self.decoder_optim.zero_grad()
+            x = b['obs'].float()
+            itv = b['itv'].float()
+            mask = b['mask'].float()
+            init_hidden = b['hidden'].float()
+            weight = b['weight'].float()
+            test_loss_add = self.decoder(init_hidden, itv[:, :, :-1], mask, weight, x, True)
+            test_loss += valid_loss_add
+            test_num += mask.sum()
+        test_loss /= test_num
+        df_file_name = "./CHIL_results/0112CHIL.csv"
+        df_res = pd.DataFrame({"Name": [self.args.exid],
+                               "val_mse": [best_mse],
+                               "test_mse": [test_loss],
+                               "dataset": [self.args.dataset['type']],
+                               "CV index": [self.args.cv_idx]})
+        if os.path.isfile(df_file_name):
+            df = pd.read_csv(df_file_name)
+            df = df.append(df_res)
+            df.to_csv(df_file_name, index=False)
+        else:
+            df_res.to_csv(df_file_name, index=False)
+
     def train_non_truncated_decoder(self):
         state_dict = torch.load('./save/{}/Encoder'.format(self.args.exid))['model_state_dict']
         self.encoder.load_state_dict(state_dict)
@@ -307,11 +349,12 @@ class PropensityRunner():
         for i in range(niter):
             for j, b in enumerate(self.dl['train']):
                 self.decoder_optim.zero_grad()
-                x = b['obs'].float()
-                itv = b['itv'].float()
+                x = b['obs'].float().to(self.args.device)
+                itv = b['itv'].float().to(self.args.device)
+
                 loss = self.decoder.forward_nontruncated(x, itv, self.encoder)
-                loss /= torch.ones_like(x[6:]).sum()
-                # print(torch.ones_like(x[6:]).sum())
+                time_to_encode = int(x.size(0) * self.args.tte)
+                loss /= torch.ones_like(x[time_to_encode+1:]).sum()
                 loss.backward()
                 self.decoder_optim.step()
                 print('[Decoder(non-truncated)] Epoch:{}/{}, Loss: {}'
@@ -327,7 +370,7 @@ class PropensityRunner():
                 itv = b['itv'].float()
                 valid_loss_add = self.decoder.forward_nontruncated(x, itv, self.encoder, True)
                 valid_loss += valid_loss_add
-                valid_num += torch.ones_like(x[6:]).sum()
+                valid_num += torch.ones_like(x[time_to_encode+1:]).sum()
             valid_loss /= valid_num
             self.draw_learning_curve(self.writer, 'valid_decoder', valid_loss.item(), i)
 
@@ -338,6 +381,38 @@ class PropensityRunner():
                 self.model_save(epoch=i, loss=best_mse, name='Decoder', model=self.decoder)
                 print('[Decoder(non-truncated)] Saved at {}'.format(i))
         print(best_mse)
+
+        state_dict = torch.load('./save/{}/Decoder'.format(self.args.exid))['model_state_dict']
+        self.decoder.load_state_dict(state_dict)
+        print('[Decoder] Decoder is re-uploaded')
+
+        test_loss = 0
+        test_num = 0
+        for j, b in enumerate(self.dl['valid']):
+            self.decoder_optim.zero_grad()
+            x = b['obs'].float()
+            itv = b['itv'].float()
+            time_to_encode = int(x.size(0) * self.args.tte)
+            test_loss_add = self.decoder.forward_nontruncated(x, itv, self.encoder, True)
+            test_loss += test_loss_add
+            test_num += torch.ones_like(x[time_to_encode + 1:]).sum()
+
+        test_loss /= test_num
+        df_file_name = "./CHIL_results/0112CHIL.csv"
+        df_res = pd.DataFrame({"Name": [self.args.exid],
+                               "val_mse": [best_mse],
+                               "test_mse": [test_loss],
+                               "dataset": [self.args.dataset['type']],
+                               "CV index": [self.args.cv_idx]})
+        if os.path.isfile(df_file_name):
+            df = pd.read_csv(df_file_name)
+            df = df.append(df_res)
+            df.to_csv(df_file_name, index=False)
+        else:
+            df_res.to_csv(df_file_name, index=False)
+
+        # record the results
+
 
     def get_encoder(self):
         input_dim = self.args.model['intervention_dim'] + \
@@ -352,9 +427,9 @@ class PropensityRunner():
         input_hidden_dim = self.args.model['encoder_dim']
         hidden_dim = self.args.model['decoder_hidden_dim']
         obs_dim = self.args.model['observation_dim']
-        decoder = DecoderNet(input_hidden_dim, hidden_dim,
+        decoder = DecoderNet(self.args, input_hidden_dim, hidden_dim,
                              itv_dim=self.args.model['intervention_dim'],
-                             obs_dim=obs_dim)
+                             obs_dim=obs_dim).to(self.args.device)
         return decoder
 
     def model_save(self, epoch, loss, name, model):
@@ -376,3 +451,5 @@ class PropensityRunner():
     def draw_learning_curve(self, writer, id, loss, iter):
         writer.add_scalar('./loss/' + id, loss, iter)
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

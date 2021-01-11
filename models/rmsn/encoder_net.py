@@ -47,7 +47,7 @@ class EncoderNet(nn.Module):
                 # predict Censoring Weight
                 censor_numerator = self.propensity.censor_numer.infer(x[:,:,self.obs_dim:]) # update hidden
                 censor_denominator = self.propensity.censor_denom.infer(x)
-                CW = (censor_numerator/(censor_denominator+self.epsilon)) # Censoring Weight
+                CW = ((censor_numerator+self.epsilon)/(censor_denominator+self.epsilon)) # Censoring Weight
                 mse_loss *= CW/(CW.sum()/torch.ones_like(gt[1:,:,:]).sum())
 
                 # predict Stabilzed Weight
@@ -64,7 +64,7 @@ class EncoderNet(nn.Module):
 
                 SW=1
                 for i in range(sw_numerator.size(2)):
-                    SW*=sw_numerator[:,:,i]/(sw_demoninator[:,:,i]+self.epsilon)
+                    SW*=(sw_numerator[:,:,i]+self.epsilon)/(sw_demoninator[:,:,i]+self.epsilon)
                 SW = SW.unsqueeze(2)
                 SW = SW/(SW.sum()/torch.ones_like(gt[1:,:,:]).sum())
 
