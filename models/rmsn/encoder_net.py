@@ -4,7 +4,7 @@ import numpy as np
 from torch.autograd import Variable
 
 class EncoderNet(nn.Module):
-    def __init__(self, input_size, hidden_size, obs_dim, propensity_net):
+    def __init__(self, args, input_size, hidden_size, obs_dim, propensity_net):
         super().__init__()
         self.model = nn.GRUCell(input_size, hidden_size)
         self.decoder = nn.Linear(hidden_size, obs_dim)
@@ -16,6 +16,7 @@ class EncoderNet(nn.Module):
         print('[Encoder Net] Encoder is initialized')
         self.propensity = propensity_net
         self.obs_dim = obs_dim
+        self.args = args
 
     def forward(self, x, gt=None, valid=False, jupyter=False):
         """
@@ -23,10 +24,11 @@ class EncoderNet(nn.Module):
         :param gt: Y_{t}
         :return:
         """
-        h = Variable(torch.zeros(x.size(1), self.h_dim))
+        h = Variable(torch.zeros(x.size(1), self.h_dim)).to(self.args.device)
         mse_loss = 0
         pred_list = []
         hidden_list = []
+
         # predict the state
         for t in range(x.size(0)-1):
             h = self.model(x[t], h) # update hidden
@@ -36,6 +38,7 @@ class EncoderNet(nn.Module):
                 hidden_list.append(h)
 
         mse_loss = torch.pow(torch.stack(pred_list)-gt[1:,:,:], 2)
+
         if not valid:
             mse_loss = torch.sum(mse_loss, dim=2).unsqueeze(2)
             # print(mse_loss.size())
@@ -48,13 +51,13 @@ class EncoderNet(nn.Module):
                 mse_loss *= CW/(CW.sum()/torch.ones_like(gt[1:,:,:]).sum())
 
                 # predict Stabilzed Weight
-                _,_,_, sw_numerator = self.propensity.st_numer(x[:,:,self.obs_dim:])
+                _,_, sw_numerator = self.propensity.st_numer(x[:,:,self.obs_dim:])
                 A_mean = torch.stack(sw_numerator[0])
                 A_std = torch.stack(sw_numerator[1])
                 sw_numerator = self.gaussian_dist(x[1:,:,self.obs_dim:], A_mean, A_std)
 
                 H=torch.cat([x[1:,:,:self.obs_dim], x[:x.size(0)-1,:,self.obs_dim:]],dim=2)
-                _,_,_, sw_demoninator = self.propensity.st_denom(x=H, gt=x[:,:,self.obs_dim:])
+                _,_, sw_demoninator = self.propensity.st_denom(x=H, gt=x[:,:,self.obs_dim:])
                 A_mean = torch.stack(sw_demoninator[0])
                 A_std = torch.stack(sw_demoninator[1])
                 sw_demoninator = self.gaussian_dist(x[1:,:,self.obs_dim:], A_mean, A_std)

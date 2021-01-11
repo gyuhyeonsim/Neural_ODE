@@ -3,7 +3,7 @@ mode:
 
 model:
   name: 'rmsn'
-  phase: 1
+  phase: 2
   cs_hidden_dim : 35
   st_hidden_dim : 35
   intervention_dim : 2

@@ -6,8 +6,8 @@ model:
   phase: 1
   cs_hidden_dim : 35
   st_hidden_dim : 35
-  intervention_dim : 2
-  observation_dim : 2
+  intervention_dim : 5
+  observation_dim : 3
   latent_dim : 16
   encoder_dim : 64
   layer : 1

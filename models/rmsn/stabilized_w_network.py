@@ -27,60 +27,47 @@ class StabilizeNet(nn.Module):
         self.dec = nn.Sequential(
             nn.Linear(h_dim, h_dim),
             nn.ReLU(),
-            nn.Linear(h_dim, outdim))
+            nn.Linear(h_dim, outdim*2))  # mean, std
         self.mse_loss = nn.MSELoss(reduction='sum')
+
+        obs_noise_std = 1e-2
+        self.obs_noise_std = torch.tensor(obs_noise_std)
 
     def forward(self, x, gt=None):
         all_dec_mean = []
+        all_dec_std = []
         mse_loss = 0
+        log_like = 0
         h = Variable(torch.zeros(self.n_layers, x.size(1), self.h_dim)).to(self.args.device)
         if gt is not None:
             dlen = x.size(0)
             for t in range(dlen):
                 # recurrence
                 _, h = self.rnn(x[t].unsqueeze(0), h)
-                pred = self.dec(h)
-                all_dec_mean.append(pred)
-                mse_loss += self.mse_loss(pred.squeeze(0), gt[t])
+                pred = self.dec(h).squeeze(0)
+                # print(pred.size())  -> [1, 32, 5]
+                mean, var = torch.chunk(pred, 2, dim=1)
+                all_dec_mean.append(mean)
+                all_dec_std.append(var)
+                std = torch.pow(torch.abs(var) + 1e-5, 0.5)
+
+                log_like += gaussian_KL(mean, gt[t], std, self.obs_noise_std).sum()#self.mse_loss(pred.squeeze(0), gt[t])
+                mse_loss += self.mse_loss(mean, gt[t])
         else:
             dlen = x.size(0)-1
             for t in range(dlen):
                 # recurrence
                 _, h = self.rnn(x[t].unsqueeze(0), h)
-                pred = self.dec(h)
-                all_dec_mean.append(pred)
-                mse_loss += self.mse_loss(pred.squeeze(0), x[t+1])
+                pred = self.dec(h).squeeze(0)
+                mean, var = torch.chunk(pred, 2, dim=1)
+                all_dec_mean.append(mean)
+                all_dec_std.append(var)
+                std = torch.pow(torch.abs(var) + 1e-5, 0.5)
 
+                log_like += gaussian_KL(mean, x[t+1], std, self.obs_noise_std).sum()#self.mse_loss(pred.squeeze(0), x[t+1])
+                mse_loss += self.mse_loss(mean, x[t+1])
 
-        return mse_loss, all_dec_mean
-
-    def sample(self, seq_len):
-
-        sample = torch.zeros(seq_len, self.x_dim)
-
-        h = Variable(torch.zeros(self.n_layers, 1, self.h_dim))
-        for t in range(seq_len):
-            # prior
-            prior_t = self.prior(h[-1])
-            prior_mean_t = self.prior_mean(prior_t)
-            prior_std_t = self.prior_std(prior_t)
-
-            # sampling and reparameterization
-            z_t = self._reparameterized_sample(prior_mean_t, prior_std_t)
-            phi_z_t = self.phi_z(z_t)
-
-            # decoder
-            dec_t = self.dec(torch.cat([phi_z_t, h[-1]], 1))
-            dec_mean_t = self.dec_mean(dec_t)
-            dec_std_t = self.dec_std(dec_t)
-            phi_x_t = self.phi_x(dec_mean_t)
-
-            # recurrence
-            _, h = self.rnn(torch.cat([phi_x_t, phi_z_t], 1).unsqueeze(0), h)
-
-            sample[t] = dec_mean_t.data
-
-        return sample
+        return log_like, mse_loss, (all_dec_mean, all_dec_std)
 
     def reset_parameters(self, stdv=1e-1):
         for weight in self.parameters():
@@ -107,3 +94,8 @@ class StabilizeNet(nn.Module):
 
     def _nll_gauss(self, mean, std, x):
         return
+
+def gaussian_KL(mu_1, mu_2, sigma_1, sigma_2):
+    """ 여기서 sigma_2로 나누는거 때문에 0으로 casting되어 에러가 발생할 수도 있다."""
+    return (torch.log(sigma_2) - torch.log(sigma_1) + (torch.pow(sigma_1, 2) + torch.pow((mu_1 - mu_2), 2)) / (
+                2 * sigma_2 ** 2) - 0.5)

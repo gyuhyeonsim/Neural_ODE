@@ -35,7 +35,7 @@ class CensorNet(nn.Module):
         return nll_loss
 
     def infer(self, x):
-        h = Variable(torch.zeros(x.size(1), self.h_dim))
+        h = Variable(torch.zeros(x.size(1), self.h_dim)).to(self.args.device)
         C_list = []
 
         for t in range(x.size(0)-1):

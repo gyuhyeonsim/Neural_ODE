@@ -51,7 +51,7 @@ class PropensityRunner():
         self.args.niter = 0
         best_mse = float('inf')
         self.model.train()
-        self.args.niter = 300
+        self.args.niter = 0
         total_iter=0
         for i in range(self.args.niter):
             for j, b in enumerate(self.dl['train']):
@@ -61,9 +61,9 @@ class PropensityRunner():
                 self.model.st_n_optim.zero_grad()
                 # print(itv[:,:,:2].permute(1,0,2).size()) [50, 64, 2]
                 # [:,:,:2] means slicing mask
-                mse_loss,_ = self.model.st_numer(
+                ll,mse_loss,_ = self.model.st_numer(
                     itv[:,:,:self.args.model['intervention_dim']].permute(1,0,2))
-                loss = (mse_loss)/(itv.size(0)*itv.size(1)*self.args.model['intervention_dim'])
+                loss = (ll)/(itv.size(0)*itv.size(1)*self.args.model['intervention_dim'])
                 loss.backward()
                 self.model.st_n_optim.step()
 
@@ -76,7 +76,7 @@ class PropensityRunner():
             valid_num = 0
             for j, b in enumerate(self.dl['valid']):
                 itv = b['itv'].float().to(self.args.device)
-                mse_loss,_ = self.model.st_numer(itv[:,:,:self.args.model['intervention_dim']].permute(1,0,2))
+                ll, mse_loss,_ = self.model.st_numer(itv[:,:,:self.args.model['intervention_dim']].permute(1,0,2))
                 valid_loss += mse_loss
                 valid_num += itv.size(0)*itv.size(1)*self.args.model['intervention_dim']
             valid_loss /= valid_num
@@ -92,6 +92,8 @@ class PropensityRunner():
 
         best_mse = float('inf')
         total_iter = 0
+        self.args.niter = 300
+
         # Train Stabilized Weights Denominator Network
         for i in range(self.args.niter):
             for j, b in enumerate(self.dl['train']):
@@ -99,8 +101,8 @@ class PropensityRunner():
                 itv = b['itv'].float().to(self.args.device)
                 self.model.st_d_optim.zero_grad()
                 H = torch.cat([x[:,1:,:], itv[:,:itv.size(1)-1,:self.args.model['intervention_dim']]],dim=2).permute(1,0,2)
-                mse_loss, _ = self.model.st_denom(x=H, gt=itv[:,1:,:self.args.model['intervention_dim']].permute(1, 0, 2))
-                loss = (mse_loss) / (itv.size(0) * itv.size(1) * 1) # censoring variable
+                ll, mse_loss,_= self.model.st_denom(x=H, gt=itv[:,1:,:self.args.model['intervention_dim']].permute(1, 0, 2))
+                loss = (ll) / (itv.size(0) * itv.size(1) * 1) # censoring variable
                 loss.backward()
                 self.model.st_d_optim.step()
                 print('[Stabilized Weights Denominator] Epoch:{}/{}, Loss: {}'
@@ -114,7 +116,7 @@ class PropensityRunner():
                 x = b['obs'].float().to(self.args.device)
                 itv = b['itv'].float().to(self.args.device)
                 H=torch.cat([x[:,1:,:], itv[:,:itv.size(1)-1,:self.args.model['intervention_dim']]],dim=2).permute(1,0,2)
-                mse_loss, _ = self.model.st_denom(x=H, gt=itv[:,1:,:self.args.model['intervention_dim']].permute(1, 0, 2))
+                ll,mse_loss,_ = self.model.st_denom(x=H, gt=itv[:,1:,:self.args.model['intervention_dim']].permute(1, 0, 2))
                 valid_loss += mse_loss
                 valid_num += (itv.size(0) * itv.size(1) * 1) #self.args.model['intervention_dim']
             valid_loss/=valid_num
@@ -211,12 +213,14 @@ class PropensityRunner():
         # self.args.niter = 5
         total_iter = 0
         niter = self.args.model['encoder_epoch']
+
         for i in range(niter):
             for j, b in enumerate(self.dl['train']):
                 self.encoder_optim.zero_grad()
-                x = b['obs'].float()
-                itv = b['itv'].float()
-                state = torch.cat([x,itv[:,:,:2]],dim=2).permute(1,0,2)
+                x = b['obs'].float().to(self.args.device)
+                itv = b['itv'].float().to(self.args.device)
+                state = torch.cat([x,itv[:,:,:self.args.model['intervention_dim']]],dim=2)\
+                    .permute(1,0,2).to(self.args.device)
                 loss,_,_ = self.encoder(x=state, gt=x.permute(1,0,2))
                 loss /= torch.ones_like(x).sum()
                 loss.backward()
@@ -229,9 +233,9 @@ class PropensityRunner():
             valid_loss = 0
             valid_num = 0
             for j, b in enumerate(self.dl['valid']):
-                x = b['obs'].float()
-                itv = b['itv'].float()
-                state = torch.cat([x, itv[:,:,:2]], dim=2).permute(1, 0, 2)
+                x = b['obs'].float().to(self.args.device)
+                itv = b['itv'].float().to(self.args.device)
+                state = torch.cat([x, itv[:,:,:self.args.model['intervention_dim']]], dim=2).permute(1, 0, 2)
                 valid_loss_add,_,_ = self.encoder(x=state, gt=x.permute(1, 0, 2), valid=True)
                 valid_loss += valid_loss_add
                 valid_num += torch.ones_like(x).sum()
@@ -340,8 +344,8 @@ class PropensityRunner():
                     self.args.model['observation_dim']
         hidden_dim = self.args.model['encoder_dim']
         obs_dim = self.args.model['observation_dim']
-        encoder = EncoderNet(input_dim, hidden_dim,
-                                  obs_dim, propensity_net=self.model)
+        encoder = EncoderNet(self.args, input_dim, hidden_dim,
+                                  obs_dim, propensity_net=self.model).to(self.args.device)
         return encoder
 
     def get_decoder(self):
